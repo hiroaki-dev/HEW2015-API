@@ -9,35 +9,19 @@
 require_once('../model/PdoWrapper.php');
 require_once('../utils/UtilsClass.php');
 
-$fdata = "./data.csv";
-$fdata_pt = @fopen($fdata, 'w');
-if (!$fdata_pt) {
-	err_sub('エラー', 'ファイルオープンエラー', 'data.csvを開くことができません');
-}
+
 /**
  * 値受け取り処理
  */
 
-ob_start();
-var_dump($_POST);
-$out = ob_get_contents();
-ob_end_clean();
-file_put_contents($fdata, $out);
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	if (empty($_POST)) 	UtilsClass::error();
+	UtilsClass::apiDebug($_POST);
+
 	foreach ($_POST as $index => $value) {
 		if (isset($index)) {
 			if (!empty($value)) {
 				$$index = $value;
-//				if($index=='answers') {
-//					$value = "\n";
-//					foreach($value as $index2 => $value2) {
-//						$value .= "\t$index2 → $value2\n";
-//					}
-//				}
-//				$row = "index = ".$index. " ,      value = ". $value . "\n";
-//				fputs($fdata_pt, $row);
-
 				continue;
 			}
 		}
@@ -47,4 +31,60 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	UtilsClass::error();
 }
 
-fclose($fdata_pt);
+/**
+ * DBインサート
+ */
+$db = new PdoWrapper('localhost', 'hew', 'hew_admin', '');
+$db->begin();
+
+	UtilsClass::apiDebug($_POST);
+	// 意見トランザクション挿入
+	if (!empty($content)) {
+		$db->setTable('opinion_table');
+		$params = [
+			'student_id' => $student_id,
+			'booth_id' => $booth_id,
+			'content' => $content
+		];
+		$db->setColumns($params);
+		$db->insert();
+		$db->clearColumns();
+	}
+
+	// 回答トランザクション挿入
+	if (!empty($answers)) {
+		$db->setTable('answer_table');
+		foreach ($answers as $answer) {
+			list($object_name, $content) = explode("=", $answer);
+
+			$vowels = [" ", "[", "]", "{", "}"];
+			$csv = str_replace($vowels, "", $content);
+
+			list($id, $boothId, $studentId, $eventCategoryId, $questionnaireLineNum, $answerNum) = explode(',', $csv);
+			$params = [
+				'booth_id' => explode(':', $boothId)[1],
+				'student_id' => explode(':', $studentId)[1],
+				'event_category_id' => explode(':', $eventCategoryId)[1],
+				'questionnaire_line_num' => explode(':', $questionnaireLineNum)[1],
+				'answer_num' => explode(':', $answerNum)[1],
+			];
+
+//		UtilsClass::apiDebug(explode(',', $csv), FILE_APPEND);
+
+			$db->setColumns($params);
+			if ($db->insert()) {
+				$response = ['status' => true];
+			} else {
+				$response = ['status' => false];
+			}
+			$db->clearColumns();
+		}
+	}
+
+$db->commit();
+
+/**
+ * 出力
+ */
+
+UtilsClass::jsonOutput($response);

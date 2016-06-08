@@ -103,6 +103,22 @@ class PdoWrapper {
 		return $stmt->execute($this->columns);
 	}
 
+	// TODO: バインド
+	public function countUp($count_up_column, $where) {
+		$sql = "UPDATE {$this->table} SET ";
+		$sql .= $count_up_column."=".$count_up_column."+1 WHERE {$where}";
+		$stmt = $this->pdo->prepare($sql);
+		return $stmt->execute();
+	}
+
+	// TODO: バインド
+	public function countDown($count_up_column, $where) {
+		$sql = "UPDATE {$this->table} SET ";
+		$sql .= $count_up_column."=".$count_up_column."-1 WHERE {$where}";
+		$stmt = $this->pdo->prepare($sql);
+		return $stmt->execute();
+	}
+
 	public function delete($condition, $params) {
 		$sql = "DELETE FROM {$this->table} WHERE {$condition}";
 		$stmt = $this->pdo->prepare($sql);
@@ -133,6 +149,7 @@ class PdoWrapper {
 			$this->limit = "";
 		}
 //		var_dump($sql);
+
 		$stmt = $this->pdo->prepare($sql);
 		$stmt->execute();
 		return $stmt->fetchAll(PDO::FETCH_ASSOC);

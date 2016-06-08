@@ -32,7 +32,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
  * DB検索
  */
 // 対象イベント検索
-$db = new PdoWrapper('localhost', 'hew', 'root', '');
+$db = new PdoWrapper('localhost', 'hew', 'hew_admin', '');
 $db->setTable('
 	student_master sm
 	INNER JOIN affiliation_master am
@@ -44,21 +44,27 @@ $db->setTable('
 	INNER JOIN EVENT_MASTER EM
 	ON tt.event_id = EM.id'
 );
+
 $event_masters = $db->getTargetList("sm.id = '".$id."'", "EM.*");
 
+
 // イベント詳細検索
+$event = [];
 foreach($event_masters as $event_master) {
 
 	$db->setTable('category_master');
 	$category_masters = $db->getTargetList("event_id = ". $event_master['id']);
+
+	$event_category = [];
+	$category = [];
 	foreach($category_masters as $category_master) {
 
 		$db->setTable('event_category_master');
 		$event_category_master = $db->getTargetList("id = ".$category_master['event_category_id'])[0];
 
-
 		$db->setTable('questionnaire_master');
 		$questionnaire_masters = $db->getTargetList("event_category_id = ". $event_category_master['id']);
+		$questionnaire = [];
 		foreach($questionnaire_masters as $questionnaire_master) {
 			$questionnaire[] = [
 				'id'=>$questionnaire_master['event_category_id'].'_'.$questionnaire_master['line_num'],
@@ -77,8 +83,21 @@ foreach($event_masters as $event_master) {
 
 		$db->setTable('booth_master');
 		$booth_masters = $db->getTargetList("event_id = '". $category_master['event_id']."' AND category_line_num = ". $category_master['line_num']);
-		foreach($booth_masters as $booth_master) {
 
+		if (mb_strlen($booth_masters[0]['subject_id']) == 4) {
+			$db->setTable('booth_master bm
+				INNER JOIN subject_master sm
+				ON bm.subject_id = sm.id
+				INNER JOIN attend_table at
+				ON sm.id = at.subject_id'
+			);
+			$booth_masters = $db->getTargetList(
+				"event_id = '". $category_master['event_id']."' AND category_line_num = ". $category_master['line_num']." AND at.student_id = '".$id."'",
+				"bm.id, bm.name, bm.description, bm.good"
+			);
+		}
+		$booth = [];
+		foreach($booth_masters as $booth_master) {
 			$db->setTable('grouping_table gt
 				INNER JOIN student_master sm
 				ON gt.id = sm.id'
@@ -122,8 +141,8 @@ foreach($event_masters as $event_master) {
 		$event_category = [
 			'id'=>$event_category_master['id'],
 			'name'=>$event_category_master['name'],
-			'opinion_flag'=>$event_category_master['opinion_flag'],
-			'check_flag'=>$event_category_master['check_flag'],
+			'opinion_flag'=>$event_category_master['opinion_flag'] == "0" ? false : true,
+			'check_flag'=>$event_category_master['check_flag'] == "0" ? false :true,
 			'good_flag'=>$good_flag,
 			'question_flag'=>$question_flag,
 			'questionnaire'=>$questionnaire

@@ -32,7 +32,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
  * DB検索
  */
 // 対象イベント検索
-$db = new PdoWrapper('localhost', 'hew', 'root', '');
+$db = new PdoWrapper('localhost', 'hew', 'hew_admin', '');
 $db->setTable('booth_master');
 $booth_masters = $db->getTargetList("event_id = '". $event_id."' AND category_line_num = ". $line_num);
 foreach($booth_masters as $booth_master) {
